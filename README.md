@@ -31,9 +31,10 @@ The workflow is divided into four distinct phases to ensure both scale and inter
 ## 🛠 Installation & Setup
 
 ### **1. Clone the Repository**
+
 ```bash
-git clone [https://github.com/your-username/your-repo-name.git](https://github.com/your-username/your-repo-name.git)
-cd your-repo-name
+git clone https://github.com/UCD-POL42560-spring-2026-G1/POL42560-group1-project
+cd POL42560-group1-project
 ```
 
 ### **2. Environment Configuration**
