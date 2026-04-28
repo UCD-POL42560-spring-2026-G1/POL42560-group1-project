@@ -1,0 +1,5 @@
+#ignore the .env file
+.env
+# Ignore the data directory due to exceeding size limits on GitHub but keep the empty folder on Github repo. All raw and temp data are uploaded in google drive, links are provided in README.md.
+data/*
+!data/.gitkeep
