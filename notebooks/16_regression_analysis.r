@@ -167,11 +167,9 @@ nrow(failed)
 library(dplyr)
 # Sentiment：Positive=1, Negative=0
 df_final$sentiment <- ifelse(df_final$ieo_sentiment == "Positive", 1, 0)
-
-# Geo-economic or not：geo-economic=1, neo-liberal=0
-df_final$geoeconomic <- ifelse(df_final$final_label == "geo-economic", 1, 0)
-
-## Regression analysis ##
+# Lagged effect: use the trade balance from the previous year to predict the sentiment in the current year
+df_final$deficit_year <- df_final$Year - 1
+## Regression analysis ## the one we finally use for the paper############################
 
 df_final$wb_region <- relevel(as.factor(df_final$wb_region), ref = "Europe and Central Asia")
 
@@ -181,14 +179,13 @@ df_final <- df_final %>%
     !is.na(trade_balance),   
     !is.na(wb_region),       
     !is.na(Year),
-    !is.na(num_matched_sentences),
-    !is.na(geoeconomic)
+    !is.na(deficit_year)
   ) 
 # Sentiment Regression
-
+# model 1
 # overall regression
 model_sent_overall <- lm(
-  sentiment ~ trade_balance + Year,
+  sentiment ~ trade_balance + factor(Year),
   data = df_final
 )
 summary(model_sent_overall)
@@ -217,11 +214,56 @@ tab2 %>%
 gtsave(tab2, "model1_table.png")
 
 
+# model 2
+# refinement（we finally mainly use this one to interpret the results）: regression using lagged effect###
+df_final_lag <- merge(
+  x = df_final,
+  y = df_reg[, c("Code", "Year", "trade_balance")],
+  by.x = c("iso_code", "deficit_year"),
+  by.y = c("Code", "Year"),
+  all.x = TRUE
+)
+df_final_lag <- df_final_lag %>% rename(trade_balance_lag = trade_balance.y)
+df_final_lag <- df_final_lag %>%
+  filter(
+    !is.na(sentiment),   
+    !is.na(trade_balance_lag),   
+    !is.na(wb_region),       
+    !is.na(Year),
+    !is.na(deficit_year)
+  ) 
+
+model_sent_lag <- lm(
+  sentiment ~ trade_balance_lag + factor(Year),
+  data = df_final_lag
+)
+summary(model_sent_lag)
+
+
+tab_lag <- modelsummary(
+  model_sent_lag,
+  statistic = "({std.error})",
+  stars = TRUE,
+  output = "gt",
+  title = "Model with Lagged Trade Balance (Previous Year)",
+  gof_omit = "IC|Log|Adj",
+  coef_map = c(
+    trade_balance_lag = "Lagged Trade Balance (% of GDP)",
+    Year = "Year"
+  )
+)
+
+tab_lag %>%
+  opt_row_striping() %>%
+  tab_options(table.font.size = px(12))
+
+gtsave(tab_lag, "model_lag_table.png")
+#############################################################################################
 # by regions(WB)
 region_sent <- df_final %>%
   group_by(wb_region) %>%
   do(model = lm(
-    sentiment ~ trade_balance + Year,
+    sentiment ~ trade_balance + factor(Year),
     data = .
   ))
 region_sent
@@ -248,45 +290,6 @@ summary(region_sent$model[[6]])
 cat("\n====== Sub-Saharan Africa ======\n")
 summary(region_sent$model[[7]])
 
-# Geo-economic classification Regression
-
-
-# overall regression
-model_geo_overall <- lm(
-  geoeconomic ~ trade_balance + Year,
-  data = df_final
-)
-summary(model_geo_overall)
-
-# by regions(WB)
-region_geo <- df_final %>%
-  group_by(wb_region) %>%
-  do(model = lm(
-    geoeconomic ~ trade_balance + Year,
-    data = .
-  ))
-region_geo
-
-cat("====== Europe and Central Asia ======\n")
-summary(region_geo$model[[1]])
-
-cat("\n====== East Asia and Pacific ======\n")
-summary(region_geo$model[[2]])
-
-cat("\n====== Latin America and the Caribbean ======\n")
-summary(region_geo$model[[3]])
-
-cat("\n====== Middle East, North Africa, Afghanistan and Pakistan ======\n")
-summary(region_geo$model[[4]])
-
-cat("\n====== North America ======\n")
-summary(region_geo$model[[5]])
-
-cat("\n====== South Asia ======\n")
-summary(region_geo$model[[6]])
-
-cat("\n====== Sub-Saharan Africa ======\n")
-summary(region_geo$model[[7]])
 
 
 
@@ -316,53 +319,3 @@ summary(region_geo$model[[7]])
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# optional choice
-# overall regression
-model_sent_overall <- plm(
-  sentiment ~ trade_balance + num_matched_sentences,
-  data = pdata,
-  model = "within",
-  effect = "twoways"
-)
-summary(model_sent_overall) 
-# by regions(WB)
-df_regression %>%
-  group_by(wb_region) %>%
-  do(model = plm(
-    sentiment ~ trade_balance + num_matched_sentences,
-    data = .,
-    model = "within",
-    effect = "twoways"
-  ))
-
-
-# Geo-economic classification Regression
-
-# overall regression
-plm(geoeconomic ~ trade_balance + num_matched_sentences,
-    data = df_regression, model = "within", effect = "twoways")
-
-# by regions(WB)
-df_regression %>%
-  group_by(wb_region) %>%
-  do(model = plm(
-    geoeconomic ~ trade_balance + num_matched_sentences,
-    data = .,
-    model = "within",
-    effect = "twoways"
-  )) 
