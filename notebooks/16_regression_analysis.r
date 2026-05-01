@@ -1,4 +1,6 @@
 ##############################################################################
+# AI tool data format converting assistance:
+# I copied the World Bank region information and gave it to Doubao to help convert the classification list into a structured mapping format for use in code.
 # Wrangle and merge the data for regression analysis
 # 1. Define the mapping and filtering dictionaries
 # ==============================
